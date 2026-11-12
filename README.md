@@ -119,19 +119,7 @@ Never commit actual API keys or passwords to GitHub.
 8. Open the application in a browser:
 
 `http://localhost:8081`
-## Application Screenshots
 
-### Dashboard
-![Dashboard](screenshots/dashboard.png)
-
-### Generated SQL
-![Generated SQL](screenshots/generated-sql.png)
-
-### Query Results
-![Query Results](screenshots/query-results.png)
-
-### Query History
-![Query History](screenshots/query-history.png)
 ## 8. Assumptions and Trade-offs
 
 - The application supports questions related to employees, departments, and attendance.
