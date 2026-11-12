@@ -1,0 +1,625 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NL2SQL - Natural Language to SQL</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f3f5fa;
+            color: #1e293b;
+        }
+
+        header {
+            background: #172554;
+            color: white;
+            padding: 22px 7%;
+        }
+
+        header h1 {
+            font-size: 25px;
+        }
+
+        header p {
+            margin-top: 7px;
+            color: #cbd5e1;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 35px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+        }
+
+        h2 {
+            font-size: 19px;
+            margin-bottom: 18px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 110px;
+            padding: 15px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 15px;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: #2563eb;
+        }
+
+        #sqlOutput {
+            min-height: 120px;
+            background: #0f172a;
+            color: #86efac;
+            font-family: Consolas, monospace;
+            line-height: 1.6;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 12px 25px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .examples {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 2;
+        }
+
+        .example {
+            display: inline-block;
+            background: #eff6ff;
+            color: #1d4ed8;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin: 4px;
+            cursor: pointer;
+        }
+
+        .example:hover {
+            background: #dbeafe;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 400px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 13px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        th {
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        #error {
+            display: none;
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .history-sql {
+            max-width: 350px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #334155;
+        }
+
+        .history-row {
+            cursor: pointer;
+        }
+
+        .history-row:hover {
+            background: #dbeafe;
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>NL2SQL Engine</h1>
+    <p>Convert Natural Language into SQL Queries</p>
+</header>
+
+<div class="container">
+
+    <!-- Ask Database -->
+    <div class="card">
+
+        <h2>Ask Your Database</h2>
+
+        <textarea id="question"
+            placeholder="Example: Show all employees in IT department"></textarea>
+
+        <button id="generateBtn" onclick="generateSQL()">
+            Generate SQL
+        </button>
+
+        <div class="examples">
+            Try these examples:<br>
+
+            <span class="example" onclick="setQuestion('Show all employees')">
+                All employees
+            </span>
+
+            <span class="example" onclick="setQuestion('Show all departments')">
+                All departments
+            </span>
+
+            <span class="example" onclick="setQuestion('Show employees in IT department')">
+                Employees in IT
+            </span>
+
+            <span class="example" onclick="setQuestion('Show attendance details')">
+                Attendance details
+            </span>
+        </div>
+
+    </div>
+
+    <!-- Error Message -->
+    <div id="error"></div>
+
+    <!-- SQL Preview -->
+    <div id="sqlCard" class="card hidden">
+
+        <h2>Generated SQL Query</h2>
+
+        <textarea id="sqlOutput" rows="5"
+            placeholder="Generated SQL will appear here..."></textarea>
+
+        <button id="executeBtn" onclick="executeSQL()">
+            Execute SQL
+        </button>
+
+    </div>
+
+    <!-- Results -->
+    <div id="resultCard" class="card hidden">
+
+        <h2>Query Results</h2>
+
+        <p id="resultCount"
+            style="margin-bottom:15px;color:#64748b;font-size:14px;">
+        </p>
+
+        <div class="table-container">
+
+            <table id="resultTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <!-- Query History -->
+    <div class="card">
+
+        <h2>Query History</h2>
+
+        <button onclick="loadHistory()">
+            Refresh History
+        </button>
+
+        <p id="historyMessage"
+            style="margin:15px 0;color:#64748b;font-size:14px;">
+            Loading query history...
+        </p>
+
+        <div class="table-container">
+
+            <table id="historyTable">
+
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Question</th>
+                        <th>Generated SQL</th>
+                        <th>Status</th>
+                        <th>Date & Time</th>
+                    </tr>
+                </thead>
+
+                <tbody id="historyBody"></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<footer>
+    Natural Language to SQL Engine | Spring Boot + MySQL + Gemini API
+</footer>
+
+<script>
+
+// Set sample question
+function setQuestion(value) {
+    document.getElementById("question").value = value;
+}
+
+// Display error message
+function showError(message) {
+    const error = document.getElementById("error");
+    error.style.display = "block";
+    error.textContent = message;
+}
+
+// Generate SQL
+async function generateSQL() {
+
+    const question = document.getElementById("question").value.trim();
+    const button = document.getElementById("generateBtn");
+    const sqlCard = document.getElementById("sqlCard");
+    const resultCard = document.getElementById("resultCard");
+    const error = document.getElementById("error");
+
+    if (question.length < 3) {
+        showError("Please enter a meaningful question.");
+        return;
+    }
+
+    error.style.display = "none";
+    sqlCard.classList.add("hidden");
+    resultCard.classList.add("hidden");
+
+    button.disabled = true;
+    button.textContent = "Generating...";
+
+    try {
+
+        const response = await fetch(
+            "/api/generate?question=" + encodeURIComponent(question)
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "SQL generation failed.");
+        }
+
+        if (!data.sql) {
+            throw new Error("No SQL query was returned.");
+        }
+
+        if (data.sql.trim() === "OUT_OF_SCOPE") {
+            showError(
+                "Your question is outside the available database schema. " +
+                "Please ask about employees, departments, or attendance."
+            );
+            return;
+        }
+
+        document.getElementById("sqlOutput").value = data.sql;
+
+        sqlCard.classList.remove("hidden");
+
+    } catch (err) {
+
+        showError("SQL generation failed: " + err.message);
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "Generate SQL";
+
+    }
+}
+
+// Execute SQL
+async function executeSQL() {
+
+    const question = document.getElementById("question").value.trim();
+    const sql = document.getElementById("sqlOutput").value.trim();
+
+    const button = document.getElementById("executeBtn");
+
+    if (!sql) {
+        showError("Please generate or enter SQL first.");
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Executing...";
+
+    document.getElementById("error").style.display = "none";
+
+    try {
+
+        const response = await fetch("/api/execute", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                question: question,
+                sql: sql
+            })
+
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "SQL execution failed.");
+        }
+
+        displayResults(data.result);
+
+    } catch (err) {
+
+        showError("SQL execution failed: " + err.message);
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "Execute SQL";
+
+        loadHistory();
+
+    }
+}
+
+// Display query results
+function displayResults(rows) {
+
+    const table = document.getElementById("resultTable");
+    const thead = table.querySelector("thead");
+    const tbody = table.querySelector("tbody");
+
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+
+    if (!rows || rows.length === 0) {
+
+        document.getElementById("resultCount").textContent =
+            "Query executed successfully. No records found.";
+
+        document.getElementById("resultCard")
+            .classList.remove("hidden");
+
+        return;
+    }
+
+    const columns = Object.keys(rows[0]);
+
+    const headerRow = document.createElement("tr");
+
+    columns.forEach(column => {
+
+        const th = document.createElement("th");
+        th.textContent = column;
+
+        headerRow.appendChild(th);
+
+    });
+
+    thead.appendChild(headerRow);
+
+    rows.forEach(row => {
+
+        const tr = document.createElement("tr");
+
+        columns.forEach(column => {
+
+            const td = document.createElement("td");
+
+            td.textContent =
+                row[column] === null ? "NULL" : row[column];
+
+            tr.appendChild(td);
+
+        });
+
+        tbody.appendChild(tr);
+
+    });
+
+    document.getElementById("resultCount").textContent =
+        "Showing " + rows.length + " results";
+
+    document.getElementById("resultCard")
+        .classList.remove("hidden");
+
+}
+
+// Restore a previous query
+function restoreHistory(item) {
+
+    const question =
+        item.question ?? "";
+
+    const sql =
+        item.generatedSql ??
+        item.generated_sql ??
+        item.sql ??
+        "";
+
+    document.getElementById("question").value = question;
+    document.getElementById("sqlOutput").value = sql;
+
+    document.getElementById("sqlCard")
+        .classList.remove("hidden");
+
+    document.getElementById("resultCard")
+        .classList.add("hidden");
+
+    document.getElementById("error").style.display = "none";
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}
+
+// Load Query History
+async function loadHistory() {
+
+    const tableBody = document.getElementById("historyBody");
+    const message = document.getElementById("historyMessage");
+
+    message.textContent = "Loading query history...";
+
+    try {
+
+        const response = await fetch("/api/history");
+
+        if (!response.ok) {
+            throw new Error("Unable to load query history.");
+        }
+
+        const history = await response.json();
+
+        tableBody.innerHTML = "";
+
+        if (!Array.isArray(history) || history.length === 0) {
+
+            message.textContent = "No query history available.";
+            return;
+        }
+
+        message.textContent =
+            "Click any row to restore the previous question and SQL.";
+
+        history.forEach(item => {
+
+            const row = document.createElement("tr");
+            row.classList.add("history-row");
+
+            const idCell = document.createElement("td");
+            idCell.textContent =
+                item.id ?? item.historyId ?? item.history_id ?? "";
+
+            const questionCell = document.createElement("td");
+            questionCell.textContent = item.question ?? "";
+
+            const sqlCell = document.createElement("td");
+            sqlCell.textContent =
+                item.generatedSql ??
+                item.generated_sql ??
+                item.sql ??
+                "";
+
+            sqlCell.classList.add("history-sql");
+
+            const statusCell = document.createElement("td");
+            statusCell.textContent =
+                item.executionStatus ??
+                item.execution_status ??
+                item.status ??
+                "";
+
+            const dateCell = document.createElement("td");
+            dateCell.textContent =
+                item.createdAt ??
+                item.created_at ??
+                "";
+
+            row.appendChild(idCell);
+            row.appendChild(questionCell);
+            row.appendChild(sqlCell);
+            row.appendChild(statusCell);
+            row.appendChild(dateCell);
+
+            row.addEventListener("click", function() {
+                restoreHistory(item);
+            });
+
+            tableBody.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error("History loading failed:", error);
+
+        tableBody.innerHTML = "";
+        message.textContent = "Failed to load query history.";
+
+    }
+}
+
+// Load history when page opens
+document.addEventListener("DOMContentLoaded", function() {
+    loadHistory();
+});
+
+</script>
+
+</body>
+</html>
